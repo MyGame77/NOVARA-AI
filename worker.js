@@ -1,6 +1,6 @@
 
 const ALLOWED_ORIGINS = [
-  "https://mygame77.github.io",
+  "https://MyGame77.github.io",
   "http://localhost:8788"
 ];
 
