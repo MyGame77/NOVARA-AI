@@ -1,5 +1,5 @@
 
-const API_URL = "PASTE_YOUR_CLOUDFLARE_WORKER_URL_HERE";
+const API_URL = "https://novara-ai.mygame77123.workers.dev";
 
 const form = document.getElementById("chatForm");
 const input = document.getElementById("messageInput");
