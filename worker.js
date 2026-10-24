@@ -38,9 +38,9 @@ export default {
       );
     }
 
-    if (!env.GEMINI_API_KEY) {
+    if (!env.GROQ_API_KEY) {
       return Response.json(
-        { error: "Gemini API key is not configured." },
+        { error: "GROQ_API_KEY secret is missing." },
         { status: 500, headers }
       );
     }
@@ -57,23 +57,28 @@ export default {
       }
 
       const result = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "https://api.groq.com/openai/v1/chat/completions",
         {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": env.GEMINI_API_KEY
+            "Authorization": `Bearer ${env.GROQ_API_KEY}`,
+            "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            systemInstruction: {
-              parts: [{
-                text: "You are NOVARA AI, a helpful and friendly AI assistant. Give clear, accurate answers. Do not invent facts about your creator or claim knowledge you do not have."
-              }]
-            },
-            contents: [{
-              role: "user",
-              parts: [{ text: message.trim() }]
-            }]
+            model: "llama-3.3-70b-versatile",
+            messages: [
+              {
+                role: "system",
+                content:
+                  "You are NOVARA AI, a helpful and friendly AI assistant. Give accurate, clear answers. Do not invent facts about your creator. If you don't know something, say so."
+              },
+              {
+                role: "user",
+                content: message.trim()
+              }
+            ],
+            temperature: 0.7,
+            max_completion_tokens: 1024
           })
         }
       );
@@ -83,24 +88,24 @@ export default {
       if (!result.ok) {
         return Response.json(
           {
-            error: data.error?.message || "Gemini API request failed."
+            error:
+              data.error?.message ||
+              `Groq API request failed (${result.status}).`
           },
           { status: 502, headers }
         );
       }
 
-      const reply = data.candidates?.[0]?.content?.parts
-        ?.map(part => part.text || "")
-        .join("")
-        .trim();
+      const reply =
+        data.choices?.[0]?.message?.content?.trim();
 
       return Response.json(
-        { reply: reply || "Gemini returned an empty response." },
+        { reply: reply || "Groq returned an empty response." },
         { headers }
       );
-    } catch (error) {
+    } catch {
       return Response.json(
-        { error: "Server error while contacting Gemini." },
+        { error: "Server error while contacting Groq." },
         { status: 500, headers }
       );
     }
