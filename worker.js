@@ -1,4 +1,3 @@
-
 const ALLOWED_ORIGINS = [
   "https://mygame77.github.io",
   "https://novara-ai.mygame77123.workers.dev",
@@ -20,17 +19,23 @@ export default {
       "Content-Type": "application/json"
     };
 
+    // Handle CORS preflight requests
     if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers });
+      return new Response(null, {
+        status: 204,
+        headers
+      });
     }
 
+    // Validate the request origin
     if (!ALLOWED_ORIGINS.includes(origin)) {
       return Response.json(
-        { error: "Origin not allowed" },
+        { error: "Origin not allowed." },
         { status: 403, headers }
       );
     }
 
+    // Only allow POST requests
     if (request.method !== "POST") {
       return Response.json(
         { error: "Use POST for chat requests." },
@@ -38,17 +43,11 @@ export default {
       );
     }
 
-    if (!env.GROQ_API_KEY) {
-      return Response.json(
-        { error: "GROQ_API_KEY secret is missing." },
-        { status: 500, headers }
-      );
-    }
-
     try {
       const body = await request.json();
       const message = body.message;
 
+      // Validate the message
       if (typeof message !== "string" || !message.trim()) {
         return Response.json(
           { error: "Please enter a message." },
@@ -56,58 +55,43 @@ export default {
         );
       }
 
-      const result = await fetch(
-        "https://api.groq.com/openai/v1/chat/completions",
+      // Run NOVARA AI using Llama on Cloudflare Workers AI
+      const result = await env.AI.run(
+        "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
         {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${env.GROQ_API_KEY}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            model: "llama-3.3-70b-versatile",
-            messages: [
-              {
-                role: "system",
-                content:
-                  "You are NOVARA AI, a helpful and friendly AI assistant. Give accurate, clear answers. Do not invent facts about your creator. If you don't know something, say so."
-              },
-              {
-                role: "user",
-                content: message.trim()
-              }
-            ],
-            temperature: 0.7,
-            max_completion_tokens: 1024
-          })
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are NOVARA AI, a helpful and friendly AI assistant. " +
+                "Give accurate, clear answers. Never invent facts about your creator. " +
+                "If you do not know something, say so."
+            },
+            {
+              role: "user",
+              content: message.trim()
+            }
+          ]
         }
       );
 
-      const data = await result.json();
-
-      if (!result.ok) {
-        return Response.json(
-          {
-            error:
-              data.error?.message ||
-              `Groq API request failed (${result.status}).`
-          },
-          { status: 502, headers }
-        );
-      }
-
       const reply =
-        data.choices?.[0]?.message?.content?.trim();
+        result?.response?.trim() ||
+        "Llama returned an empty response.";
 
       return Response.json(
-        { reply: reply || "Groq returned an empty response." },
+        { reply },
         { headers }
       );
-    } catch {
+
+    } catch (error) {
+      console.error("NOVARA AI error:", error);
+
       return Response.json(
-        { error: "Server error while contacting Groq." },
+        { error: "NOVARA AI encountered an error. Check the Worker logs." },
         { status: 500, headers }
       );
     }
   }
 };
+```
