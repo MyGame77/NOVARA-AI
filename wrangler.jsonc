@@ -2,7 +2,10 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "novara-ai",
   "main": "worker.js",
-  "compatibility_date": "2026-10-24",
+  "compatibility_date": "2026-10-19",
+  "observability": {
+    "enabled": true
+  },
   "ai": {
     "binding": "AI"
   }
