@@ -10,20 +10,23 @@ const welcome = document.getElementById("welcome");
 let chatHistory = [];
 
 function addMessage(role, text) {
+  messageList.classList.add("visible");
   const message = document.createElement("div");
   message.className = `message ${role}`;
 
-  const label = document.createElement("div");
-  label.className = "message-label";
-  label.textContent = role === "user" ? "YOU" : "NOVARA AI";
+  const avatar = document.createElement("div");
+  avatar.className = "message-avatar";
+  avatar.textContent = role === "user" ? "YOU" : "N";
+  avatar.setAttribute("aria-hidden", "true");
 
   const content = document.createElement("div");
-  content.className = "message-content";
+  content.className = "message-body";
   content.textContent = text;
 
-  message.append(label, content);
+  message.append(avatar, content);
   messageList.appendChild(message);
   messageList.scrollTop = messageList.scrollHeight;
+  return message;
 }
 
 async function sendMessage(text) {
@@ -36,16 +39,15 @@ async function sendMessage(text) {
   }
 
   welcome?.classList.add("hidden");
+  messageList.classList.add("visible");
   addMessage("user", text);
   chatHistory.push({ role: "user", text });
 
   input.value = "";
   sendButton.disabled = true;
 
-  const loading = document.createElement("div");
-  loading.className = "message assistant";
-  loading.textContent = "NOVARA AI is thinking...";
-  messageList.appendChild(loading);
+  const loading = addMessage("assistant", "NOVARA AI is thinking...");
+  loading.querySelector(".message-body")?.classList.add("pending");
 
   try {
     const response = await fetch(API_URL, {
@@ -89,6 +91,7 @@ document.querySelectorAll("[data-prompt]").forEach(button => {
 document.getElementById("newChatButton")?.addEventListener("click", () => {
   chatHistory = [];
   messageList.replaceChildren();
+  messageList.classList.remove("visible");
   welcome?.classList.remove("hidden");
   input.value = "";
 });
@@ -96,6 +99,7 @@ document.getElementById("newChatButton")?.addEventListener("click", () => {
 document.getElementById("clearChatButton")?.addEventListener("click", () => {
   chatHistory = [];
   messageList.replaceChildren();
+  messageList.classList.remove("visible");
   welcome?.classList.remove("hidden");
 });
 
