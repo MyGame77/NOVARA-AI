@@ -7,6 +7,8 @@ const ALLOWED_ORIGINS = [
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
+    console.log("Request Origin:", origin);
+console.log("Allowed Origins:", ALLOWED_ORIGINS);
 
     const headers = {
       "Access-Control-Allow-Origin": ALLOWED_ORIGINS.includes(origin)
