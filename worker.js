@@ -1,5 +1,6 @@
 const ALLOWED_ORIGINS = [
   "https://mygame77.github.io",
+  "https://novara-ai.mygame77123.workers.dev",
   "http://localhost:8788"
 ];
 
