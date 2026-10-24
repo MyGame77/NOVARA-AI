@@ -1,4 +1,3 @@
-
 const ALLOWED_ORIGINS = [
   "https://mygame77.github.io",
   "http://localhost:8788"
@@ -7,19 +6,21 @@ const ALLOWED_ORIGINS = [
 export default {
   async fetch(request, env) {
     const origin = request.headers.get("Origin") || "";
-    const allowedOrigin = ALLOWED_ORIGINS.includes(origin)
-      ? origin
-      : ALLOWED_ORIGINS[0];
 
     const headers = {
-      "Access-Control-Allow-Origin": allowedOrigin,
+      "Access-Control-Allow-Origin": ALLOWED_ORIGINS.includes(origin)
+        ? origin
+        : ALLOWED_ORIGINS[0],
       "Access-Control-Allow-Methods": "POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type",
       "Content-Type": "application/json"
     };
 
     if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers });
+      return new Response(null, {
+        status: 204,
+        headers
+      });
     }
 
     if (!ALLOWED_ORIGINS.includes(origin)) {
@@ -47,51 +48,49 @@ export default {
         );
       }
 
-      const result = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": env.GEMINI_API_KEY
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                role: "user",
-                parts: [{ text: message.trim() }]
-              }
-            ],
-            systemInstruction: {
-              parts: [{
-                text: "You are NOVARA AI, a helpful, friendly AI assistant. Give clear and accurate answers."
-              }]
-            }
-          })
-        }
-      );
-
-      const data = await result.json();
-
-      if (!result.ok) {
+      if (!env.AI) {
         return Response.json(
-          { error: data.error?.message || "Gemini request failed." },
-          { status: result.status, headers }
+          { error: "Cloudflare AI binding is missing. Configure env.AI in your Worker settings." },
+          { status: 500, headers }
         );
       }
 
-      const reply = data.candidates?.[0]?.content?.parts
-        ?.map(part => part.text || "")
-        .join("")
-        .trim();
+      const result = await env.AI.run(
+        "@cf/meta/llama-3.1-8b-instruct",
+        {
+          messages: [
+            {
+              role: "system",
+              content: "You are NOVARA AI, a helpful, friendly AI assistant. Give clear, accurate, and useful answers. Keep your responses easy to understand."
+            },
+            {
+              role: "user",
+              content: message.trim()
+            }
+          ]
+        }
+      );
+
+      const reply =
+        result?.response ||
+        result?.choices?.[0]?.message?.content ||
+        result?.output_text;
+
+      if (typeof reply !== "string" || !reply.trim()) {
+        return Response.json(
+          { error: "The AI returned an empty response. Please try again." },
+          { status: 502, headers }
+        );
+      }
 
       return Response.json(
-        { reply: reply || "Gemini returned an empty response." },
+        { reply: reply.trim() },
         { headers }
       );
-    } catch {
+
+    } catch (error) {
       return Response.json(
-        { error: "Server error. Check the Worker configuration." },
+        { error: "Cloudflare AI request failed. Check your AI binding, model availability, and account limits." },
         { status: 500, headers }
       );
     }
